@@ -9,7 +9,11 @@ COUNT=(0 0)
 ## Define the function for installing the apk
 ## Usage: install <apkname> (aka $1)
 ## Args: <apkname> file name of the apk to be installed
-function install {
+##
+## 64 bit - appv8.apk
+## 32 bit - appv7.apk
+## both of the above files must exist in the same directory as this script
+function install_apk {
     TOD=$(date +'%Y-%m-%d,%H:%M:%S')
     echo "Installatroning $1 on $SERIAL model $MODEL for arch $ARCH"
     result=$($ADB -s $SERIAL install -d -r  $1)
@@ -19,13 +23,28 @@ function install {
 	status=0
 	((COUNT[0]++))
     else
-	echo "Installation failed - $result", aborting current install
+	echo "Installation failed - $result, aborting current install"
 	((COUNT[1]++))
 	status=-1
     fi
 
 return $status
 }
+
+
+## Define the function for installing the assets for stage and debug builds
+## The assests are not needed for release builds
+function install_assets {
+    echo "Installatroning $1 on $SERIAL model $MODEL for arch $ARCH"
+    result=$($ADB -s $SERIAL push $1 /sdcard/download) 
+    if [[ "$result" == *"$SUCCESS"* ]]; then
+	echo "Successfully InstalledPushed $1"
+    else
+	echo "Push failed - $result, aborting push"
+	status=-1
+    fi
+}
+
 
 ## Main
 echo "Installatron"
@@ -56,9 +75,11 @@ do
       fi
       ## install the V8 or the v7 release version of Code On The Go
       if [[ "$ARCH" == arm64-v8a ]]; then
-	  install appv8.apk
+	  install_apk appv8.apk
+	  install_assets assets-arm64-v8a.zip
       elif [[ "$ARCH" == armeabi-v7a ]]; then
-	  install appv7.apk
+	  install_apk appv7.apk
+	  install_assets assets-armeabi-v7a.zip
       else
 	  echo unknown architecture - $ARCH, aborting current install
 	  ((COUNT[1]++))
